@@ -28,14 +28,14 @@ export abstract class Card {
     tags: string[],
     inserted: boolean,
     mediaNames: string[],
-    containsCode = false
+    containsCode = false,
   ) {
     this.id = id;
     this.deckName = deckName;
     this.initialContent = initialContent;
     this.fields = fields;
     this.reversed = reversed;
-    this.initialOffset = initialOffset
+    this.initialOffset = initialOffset;
     this.endOffset = endOffset;
     this.tags = tags;
     this.inserted = inserted;
@@ -57,7 +57,7 @@ export abstract class Card {
     //     return false
     // }
 
-    const fields : any = Object.entries(card.fields);
+    const fields: any = Object.entries(card.fields);
     // This is the case of a switch from a model to another one. It cannot be handeled
     if (fields.length !== Object.entries(this.fields).length) {
       return true;
@@ -65,6 +65,7 @@ export abstract class Card {
 
     for (const field of fields) {
       const fieldName = field[0];
+      if (fieldName === "Source") continue;
       if (field[1].value !== this.fields[fieldName]) {
         return false;
       }
