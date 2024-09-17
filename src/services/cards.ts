@@ -60,7 +60,10 @@ export class CardsService {
     let deckName = "";
     if (parseFrontMatterEntry(frontmatter, "cards-deck")) {
       deckName = parseFrontMatterEntry(frontmatter, "cards-deck");
-    } else if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
+    } else if (
+      this.settings.folderBasedDeck &&
+      activeFile.parent.path !== "/"
+    ) {
       // If the current file is in the path "programming/java/strings.md" then the deck name is "programming::java"
       deckName = activeFile.parent.path.split("/").join("::");
     } else {
@@ -71,7 +74,7 @@ export class CardsService {
       this.anki.storeCodeHighlightMedias();
       await this.anki.createModels(
         this.settings.sourceSupport,
-        this.settings.codeHighlightSupport
+        this.settings.codeHighlightSupport,
       );
       await this.anki.createDeck(deckName);
       this.file = await this.app.vault.read(activeFile);
@@ -90,7 +93,7 @@ export class CardsService {
         deckName,
         vaultName,
         filePath,
-        globalTags
+        globalTags,
       );
       const [cardsToCreate, cardsToUpdate, cardsNotInAnki] =
         this.filterByUpdate(ankiCards, cards);
@@ -107,7 +110,7 @@ export class CardsService {
         console.info("Flashcards: Cards not in Anki (maybe deleted)");
         for (const card of cardsNotInAnki) {
           this.notifications.push(
-            `Error: Card with ID ${card.id} is not in Anki!`
+            `Error: Card with ID ${card.id} is not in Anki!`,
           );
         }
       }
@@ -121,7 +124,7 @@ export class CardsService {
       // Update decks if needed
       const deckNeedToBeChanged = await this.deckNeedToBeChanged(
         cardIds,
-        deckName
+        deckName,
       );
       if (deckNeedToBeChanged) {
         try {
@@ -174,7 +177,7 @@ export class CardsService {
         for (const media of card.mediaNames) {
           const image = this.app.metadataCache.getFirstLinkpathDest(
             decodeURIComponent(media),
-            sourcePath
+            sourcePath,
           );
           try {
             const binaryMedia = await this.app.vault.readBinary(image);
@@ -202,7 +205,7 @@ export class CardsService {
           if (card.id === null) {
             new Notice(
               `Error, could not add: '${card.initialContent}'`,
-              noticeTimeout
+              noticeTimeout,
             );
           } else {
             card.reversed ? (insertedCards += 2) : insertedCards++;
@@ -210,10 +213,15 @@ export class CardsService {
           card.reversed ? (total += 2) : total++;
         });
 
+        if (this.settings.sourceSupport) {
+          this.parser.updateCardSource(cardsToCreate);
+          this.anki.updateCards(cardsToCreate);
+        }
+
         this.writeAnkiBlocks(cardsToCreate);
 
         this.notifications.push(
-          `Inserted successfully ${insertedCards}/${total} cards.`
+          `Inserted successfully ${insertedCards}/${total} cards.`,
         );
         return insertedCards;
       } catch (err) {
@@ -224,8 +232,8 @@ export class CardsService {
   }
 
   private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
-    const activeFile = this.app.workspace.getActiveFile()
-    
+    const activeFile = this.app.workspace.getActiveFile();
+
     this.app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
       frontmatter["cards-deck"] = deckName;
     });
@@ -262,7 +270,7 @@ export class CardsService {
       try {
         this.anki.updateCards(cards);
         this.notifications.push(
-          `Updated successfully ${cards.length}/${cards.length} cards.`
+          `Updated successfully ${cards.length}/${cards.length} cards.`,
         );
       } catch (err) {
         console.error(err);
@@ -275,7 +283,7 @@ export class CardsService {
 
   public async deleteCardsOnAnki(
     cards: number[],
-    ankiBlocks: RegExpMatchArray[]
+    ankiBlocks: RegExpMatchArray[],
   ): Promise<number> {
     if (cards.length) {
       let deletedCards = 0;
@@ -293,11 +301,11 @@ export class CardsService {
               this.file.substring(0, block["index"]) +
               this.file.substring(
                 block["index"] + block[0].length,
-                this.file.length
+                this.file.length,
               );
             this.totalOffset -= block[0].length;
             this.notifications.push(
-              `Deleted successfully ${deletedCards}/${cards.length} cards.`
+              `Deleted successfully ${deletedCards}/${cards.length} cards.`,
             );
           } catch (err) {
             console.error(err);
@@ -331,7 +339,7 @@ export class CardsService {
         let ankiCard = undefined;
         if (flashcard.inserted) {
           ankiCard = ankiCards.filter(
-            (card: any) => Number(card.noteId) === flashcard.id
+            (card: any) => Number(card.noteId) === flashcard.id,
           )[0];
           if (!ankiCard) {
             cardsNotInAnki.push(flashcard);
@@ -369,7 +377,7 @@ export class CardsService {
         let ankiCard = undefined;
         if (flashcard.inserted) {
           ankiCard = ankiCards.filter(
-            (card: any) => Number(card.noteId) === flashcard.id
+            (card: any) => Number(card.noteId) === flashcard.id,
           )[0];
           if (ankiCard) {
             ids = ids.concat(ankiCard.cards);
