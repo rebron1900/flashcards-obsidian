@@ -1,4 +1,6 @@
-> :warning: **I am currently looking out for a co-maintainer.** Look at [#125](https://github.com/reuseman/flashcards-obsidian/issues/125), and if you are interested let me know :)
+> Merge:
+> 1. Bug fix caused by Obsidian Property.  
+> 2. Add Block info to source with bug fix.
 ---
 
 # Flashcards
