@@ -65,7 +65,12 @@ export abstract class Card {
 
     for (const field of fields) {
       const fieldName = field[0];
-      if (fieldName === "Source") continue;
+      if (fieldName === "Source") {
+        if (field[1].value.indexOf("%23%5E") == -1) {
+          return false;
+        }
+        continue;
+      }
       if (field[1].value !== this.fields[fieldName]) {
         return false;
       }
