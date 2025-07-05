@@ -66,8 +66,20 @@ export abstract class Card {
     for (const field of fields) {
       const fieldName = field[0];
       if (fieldName === "Source") {
-        if (field[1].value.indexOf("%23%5E") == -1) {
-          return false;
+        // For source field, compare the actual content but allow for block ID updates
+        const ankiSource = field[1].value;
+        const currentSource = this.fields[fieldName];
+        
+        // If source support is enabled, we need to properly compare the source
+        if (currentSource && ankiSource) {
+          // Extract the base filename from both sources for comparison
+          const ankiFilename = this.extractFilenameFromSource(ankiSource);
+          const currentFilename = this.extractFilenameFromSource(currentSource);
+          
+          // If filenames are different, the card needs updating
+          if (ankiFilename !== currentFilename) {
+            return false;
+          }
         }
         continue;
       }
@@ -77,6 +89,22 @@ export abstract class Card {
     }
 
     return arraysEqual(card.tags, this.tags);
+  }
+
+  private extractFilenameFromSource(source: string): string {
+    // Extract filename from obsidian link format: [[filename]] or from URL
+    const wikiMatch = source.match(/\[\[([^\]]+)\]\]/);
+    if (wikiMatch) {
+      return wikiMatch[1];
+    }
+    
+    // Extract from obsidian URL format
+    const urlMatch = source.match(/file=([^#&]+)/);
+    if (urlMatch) {
+      return decodeURIComponent(urlMatch[1]);
+    }
+    
+    return source;
   }
 
   getCodeDeckNameExtension() {
