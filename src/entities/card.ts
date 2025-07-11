@@ -92,19 +92,16 @@ export abstract class Card {
   }
 
   private extractFilenameFromSource(source: string): string {
-    // Extract filename from obsidian link format: [[filename]] or [[path/filename]] or from URL
+    // Extract filename from obsidian link format: [[filename]] or from URL
     const wikiMatch = source.match(/\[\[([^\]]+)\]\]/);
     if (wikiMatch) {
-      // Return the full path/filename to handle same-named files in different folders
       return wikiMatch[1];
     }
     
     // Extract from obsidian URL format
     const urlMatch = source.match(/file=([^#&]+)/);
     if (urlMatch) {
-      const decodedPath = decodeURIComponent(urlMatch[1]);
-      // Return the full path to distinguish files with same names
-      return decodedPath;
+      return decodeURIComponent(urlMatch[1]);
     }
     
     return source;
