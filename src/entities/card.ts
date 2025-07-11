@@ -72,12 +72,18 @@ export abstract class Card {
         
         // If source support is enabled, we need to properly compare the source
         if (currentSource && ankiSource) {
-          // Extract the base filename from both sources for comparison
-          const ankiFilename = this.extractFilenameFromSource(ankiSource);
-          const currentFilename = this.extractFilenameFromSource(currentSource);
+          // Replace placeholder with actual ID for comparison if this card has an ID
+          const currentSourceForComparison = this.id !== -1 
+            ? currentSource.replace("__BLOCK_ID__", String(this.id))
+            : currentSource;
           
-          // If filenames are different, the card needs updating
-          if (ankiFilename !== currentFilename) {
+          // For comparison, we need to handle the case where the source format might have changed
+          // Strip the actual block IDs for comparison to focus on the file reference
+          const ankiSourceNormalized = ankiSource.replace(/#\^(\d{13})/, "");
+          const currentSourceNormalized = currentSourceForComparison.replace(/#\^(\d{13})/, "").replace("__BLOCK_ID__", "");
+          
+          // If the normalized sources are different, the card needs updating
+          if (ankiSourceNormalized !== currentSourceNormalized) {
             return false;
           }
         }
@@ -95,13 +101,13 @@ export abstract class Card {
     // Extract filename from obsidian link format: [[filename]] or from URL
     const wikiMatch = source.match(/\[\[([^\]]+)\]\]/);
     if (wikiMatch) {
-      return wikiMatch[1];
+      return wikiMatch[1].replace("#^__BLOCK_ID__", "").replace(/#\^(\d{13})/, ""); // Remove block ID placeholders and actual IDs
     }
     
     // Extract from obsidian URL format
     const urlMatch = source.match(/file=([^#&]+)/);
     if (urlMatch) {
-      return decodeURIComponent(urlMatch[1]);
+      return decodeURIComponent(urlMatch[1]).replace("#^__BLOCK_ID__", "").replace(/#\^(\d{13})/, "");
     }
     
     return source;

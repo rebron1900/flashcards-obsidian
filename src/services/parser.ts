@@ -43,7 +43,7 @@ export class Parser {
       headings = [...file.matchAll(this.regex.headingsRegex)];
     }
 
-    note = this.substituteObsidianLinks(`[[${note}]]`, vault);
+    // Don't preprocess note here, do it when setting Source field for each card
     cards = cards.concat(
       this.generateCardsWithTag(file, headings, deck, vault, note, globalTags)
     );
@@ -174,7 +174,7 @@ export class Parser {
       const inserted: boolean = match[5] ? true : false;
       const fields: any = { Prompt: prompt };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields["Source"] = this.substituteObsidianLinks(`[[${note}]]`, vault);
       }
       const containsCode = this.containsCode([prompt]);
 
@@ -270,7 +270,7 @@ export class Parser {
       const inserted: boolean = match[5] ? true : false;
       const fields: any = { Text: clozeText, Extra: "" };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields["Source"] = this.substituteObsidianLinks(`[[${note}]]`, vault);
       }
       const containsCode = this.containsCode([clozeText]);
 
@@ -344,7 +344,7 @@ export class Parser {
       const inserted: boolean = match[6] ? true : false;
       const fields: any = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields["Source"] = this.substituteObsidianLinks(`[[${note}]]`, vault);
       }
       const containsCode = this.containsCode([question, answer]);
 
@@ -416,7 +416,7 @@ export class Parser {
       const inserted: boolean = match[6] ? true : false;
       const fields: any = { Front: question, Back: answer };
       if (this.settings.sourceSupport) {
-        fields["Source"] = note;
+        fields["Source"] = this.substituteObsidianLinks(`[[${note}]]`, vault);
       }
       const containsCode = this.containsCode([question, answer]);
 
@@ -495,7 +495,11 @@ export class Parser {
 
   public updateCardSource(cards: Card[]){
       for(let card of cards){
-          if(card.id == null) continue
+          if(card.id == null || card.id === -1) {
+              // For cards without valid block ID, remove the block reference from URL
+              card.fields["Source"] = card.fields["Source"].replace("#^__BLOCK_ID__", "");
+              continue;
+          }
           card.fields["Source"] = card.fields["Source"].replace("__BLOCK_ID__", String(card.id));
       }
   }
@@ -508,7 +512,7 @@ export class Parser {
       const href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(
         filename + "#^__BLOCK_ID__"
       )}`;
-      const fileRename = rename ? rename : filename;
+      const fileRename = rename ? rename : filename.split('/').pop(); // Use just the filename for display
       return `<a href="${href}">${fileRename}</a>`;
     });
   }
@@ -563,14 +567,14 @@ export class Parser {
     // value： embed content parse from html document
     const embedMap = new Map()
 
-    var embedList = Array.from(document.documentElement.getElementsByClassName('internal-embed'));
+    const embedList = Array.from(document.documentElement.getElementsByClassName('internal-embed'));
 
 
     Array.from(embedList).forEach((el) => {
       // markdown-embed-content markdown-embed-page
-      var embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(el.outerHTML).toString());
+      const embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(el.outerHTML).toString());
 
-      var embedKey = el.getAttribute("src");
+      const embedKey = el.getAttribute("src");
       embedMap.set(embedKey, embedValue);
 
       // console.log("embedKey: \n" + embedKey);
@@ -580,9 +584,9 @@ export class Parser {
     return embedMap;
   }
 
-  private getEmbedWrapContent(embedMap: Map<any, any>, embedContent: string): string {
-    var result = embedContent.match(this.regex.embedBlock);
-    while (result = this.regex.embedBlock.exec(embedContent)) {
+  private getEmbedWrapContent(embedMap: Map<string, string>, embedContent: string): string {
+    let result = embedContent.match(this.regex.embedBlock);
+    while ((result = this.regex.embedBlock.exec(embedContent))) {
       // console.log("result[0]: " + result[0]);
       // console.log("embedMap.get(result[1]): " + embedMap.get(result[1]));
       embedContent = embedContent.concat(embedMap.get(result[1]));

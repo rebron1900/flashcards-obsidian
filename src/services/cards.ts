@@ -49,7 +49,7 @@ export class CardsService {
     this.updateFile = false;
     this.totalOffset = 0;
     this.notifications = [];
-    const filePath = activeFile.basename;
+    const filePath = activeFile.path; // Use full path instead of just basename
     const sourcePath = activeFile.path;
     const fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile);
     const vaultName = this.app.vault.getName();
