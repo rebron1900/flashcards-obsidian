@@ -3,7 +3,7 @@ name: Build & Release Obsidian Plugin
 on:
   push:
     tags:
-      - "v*"
+      - "*"
   workflow_dispatch:
     inputs:
       version:
