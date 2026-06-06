@@ -13,7 +13,9 @@ export class Flashcard extends Card {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[],
-    containsCode: boolean
+    containsCode: boolean,
+    /** 自定义模型名，传此参数时覆盖默认 Obsidian-basic */
+    customModelName?: string
   ) {
     super(
       id,
@@ -28,14 +30,18 @@ export class Flashcard extends Card {
       mediaNames,
       containsCode
     );
-    this.modelName = this.reversed
-      ? `Obsidian-basic-reversed`
-      : `Obsidian-basic`;
-    if (fields["Source"]) {
-      this.modelName += sourceDeckExtension;
-    }
-    if (containsCode) {
-      this.modelName += codeDeckExtension;
+    if (customModelName) {
+      this.modelName = customModelName;
+    } else {
+      this.modelName = this.reversed
+        ? `Obsidian-basic-reversed`
+        : `Obsidian-basic`;
+      if (fields["Source"]) {
+        this.modelName += sourceDeckExtension;
+      }
+      if (containsCode) {
+        this.modelName += codeDeckExtension;
+      }
     }
   }
 

@@ -8,7 +8,7 @@ import {
   TFile,
 } from "obsidian";
 import { Parser } from "src/services/parser";
-import { ISettings } from "src/conf/settings";
+import { ISettings, ITemplateConfig } from "src/conf/settings";
 import { Card } from "src/entities/card";
 import { arrayBufferToBase64 } from "src/utils";
 import { Regex } from "src/conf/regex";
@@ -49,7 +49,7 @@ export class CardsService {
     this.updateFile = false;
     this.totalOffset = 0;
     this.notifications = [];
-    const filePath = activeFile.path; // Use full path instead of just basename
+    const filePath = activeFile.basename;
     const sourcePath = activeFile.path;
     const fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile);
     const vaultName = this.app.vault.getName();
@@ -60,22 +60,28 @@ export class CardsService {
     let deckName = "";
     if (parseFrontMatterEntry(frontmatter, "cards-deck")) {
       deckName = parseFrontMatterEntry(frontmatter, "cards-deck");
-    } else if (
-      this.settings.folderBasedDeck &&
-      activeFile.parent.path !== "/"
-    ) {
-      // If the current file is in the path "programming/java/strings.md" then the deck name is "programming::java"
+    } else if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
       deckName = activeFile.parent.path.split("/").join("::");
     } else {
       deckName = this.settings.deck;
     }
 
     try {
-      this.anki.storeCodeHighlightMedias();
-      await this.anki.createModels(
-        this.settings.sourceSupport,
-        this.settings.codeHighlightSupport,
-      );
+      // Find matching template config
+      const templateConfig = this.matchTemplateConfig(sourcePath);
+      const useListFieldParser = templateConfig && templateConfig.parseMode === 'list-field' && templateConfig.enabled;
+
+      // For custom models, skip createModels (model must already exist in Anki)
+      if (!templateConfig) {
+        this.anki.storeCodeHighlightMedias();
+        await this.anki.createModels(
+          this.settings.sourceSupport,
+          this.settings.codeHighlightSupport
+        );
+      } else {
+        // Still store highlight medias if needed, but skip model creation
+        this.anki.storeCodeHighlightMedias();
+      }
       await this.anki.createDeck(deckName);
       this.file = await this.app.vault.read(activeFile);
       if (!this.file.endsWith("\n")) {
@@ -88,13 +94,27 @@ export class CardsService {
         ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks))
         : undefined;
 
-      const cards: Card[] = this.parser.generateFlashcards(
-        this.file,
-        deckName,
-        vaultName,
-        filePath,
-        globalTags,
-      );
+      let cards: Card[];
+      if (useListFieldParser) {
+        // Use list-field parser with custom model
+        cards = this.parser.generateListFieldCards(
+          this.file,
+          deckName,
+          vaultName,
+          filePath,
+          globalTags,
+          templateConfig
+        );
+      } else {
+        // Use default parsers
+        cards = this.parser.generateFlashcards(
+          this.file,
+          deckName,
+          vaultName,
+          filePath,
+          globalTags
+        );
+      }
       const [cardsToCreate, cardsToUpdate, cardsNotInAnki] =
         this.filterByUpdate(ankiCards, cards);
       const cardIds: number[] = this.getCardsIds(ankiCards, cards);
@@ -390,6 +410,27 @@ export class CardsService {
     }
 
     return ids;
+  }
+
+  /**
+   * Match file path against template config patterns.
+   * Pattern supports basic glob: ** for wildcard
+   */
+  public matchTemplateConfig(filePath: string): ITemplateConfig | null {
+    for (const tc of this.settings.templateConfigs) {
+      if (!tc.enabled) continue;
+      const pattern = tc.filePathPattern;
+      // Convert simple glob to regex: ** → .*, * → [^/]*
+      let regexStr = pattern
+        .replace(/\*\*/g, '___DOUBLE_STAR___')
+        .replace(/\*/g, '[^/]*')
+        .replace(/___DOUBLE_STAR___/g, '.*');
+      const re = new RegExp('^' + regexStr + '$');
+      if (re.test(filePath)) {
+        return tc;
+      }
+    }
+    return null;
   }
 
   public parseGlobalTags(file: string): string[] {

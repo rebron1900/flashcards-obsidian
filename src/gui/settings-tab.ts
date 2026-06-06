@@ -1,6 +1,7 @@
 import { Notice, PluginSettingTab, Setting } from "obsidian";
 import { Anki } from "src/services/anki";
 import { escapeRegExp } from "src/utils";
+import { ITemplateConfig } from "src/conf/settings";
 
 export class SettingsTab extends PluginSettingTab {
   display(): void {
@@ -8,7 +9,41 @@ export class SettingsTab extends PluginSettingTab {
     const plugin = (this as any).plugin;
 
     containerEl.empty();
+
+    // ── Template Config Section ──
+    containerEl.createEl("h2", { text: "Custom Templates" });
+    containerEl.createEl("p", {
+      text: "Configure custom Anki note models. Cards in matching paths use the specified model.",
+      cls: "setting-item-description"
+    });
+
+    // Render existing template configs
+    const configs = plugin.settings.templateConfigs || [];
+    for (let i = 0; i < configs.length; i++) {
+      this.renderTemplateConfig(containerEl, plugin, configs[i], i);
+    }
+
+    // Add new template button
+    new Setting(containerEl).addButton((btn) => {
+      btn.setButtonText("+ Add Template").onClick(() => {
+        const newConfig: ITemplateConfig = {
+          modelName: "执业中药师-详情卡",
+          filePathPattern: "77-Anki/执业中药师/**",
+          parseMode: "list-field",
+          enabled: true,
+        };
+        plugin.settings.templateConfigs.push(newConfig);
+        plugin.saveData(plugin.settings);
+        this.display(); // re-render
+      });
+    });
+
+    containerEl.createEl("hr");
+
+    // ── Original Settings ──
     containerEl.createEl("h1", { text: "Flashcards - Settings" });
+
+    // ... (keep all original settings below)
 
     const description = createFragment()
     description.append(
@@ -213,7 +248,79 @@ export class SettingsTab extends PluginSettingTab {
             plugin.saveData(plugin.settings);
           });
       });
-
-
   }
-}
+
+  // ═══════════════════════════════════════════════
+  // Template Config UI
+  // ═══════════════════════════════════════════════
+
+  private renderTemplateConfig(
+  containerEl: HTMLElement,
+  plugin: any,
+  config: ITemplateConfig,
+  index: number
+  ) {
+  const setting = new Setting(containerEl);
+  setting.setName(`Template #${index + 1}: ${config.modelName}`);
+  setting.setDesc(`Path: ${config.filePathPattern} | Mode: ${config.parseMode}`);
+
+  // Model name
+  setting.addText((text) =>
+  text
+    .setValue(config.modelName)
+    .setPlaceholder("Model name")
+    .onChange((value) => {
+      plugin.settings.templateConfigs[index].modelName = value;
+      plugin.saveData(plugin.settings);
+    })
+  );
+
+  // Parse mode dropdown
+  setting.addDropdown((dd) =>
+  dd
+    .addOption("card-tag", "#card")
+    .addOption("list-field", "list-field")
+    .addOption("inline", "inline")
+    .addOption("cloze", "cloze")
+    .setValue(config.parseMode)
+    .onChange((value: string) => {
+      plugin.settings.templateConfigs[index].parseMode = value as any;
+      plugin.saveData(plugin.settings);
+    })
+  );
+
+  // Enable/disable toggle
+  setting.addToggle((toggle) =>
+  toggle.setValue(config.enabled).onChange((value) => {
+    plugin.settings.templateConfigs[index].enabled = value;
+    plugin.saveData(plugin.settings);
+  })
+  );
+
+  // Delete button
+  setting.addExtraButton((btn) => {
+  btn
+    .setIcon("trash")
+    .setTooltip("Delete template")
+    .onClick(() => {
+      plugin.settings.templateConfigs.splice(index, 1);
+      plugin.saveData(plugin.settings);
+      this.display();
+    });
+  });
+
+  // File path pattern (separate setting line for clarity)
+  new Setting(containerEl)
+  .setName("  File path pattern")
+  .setDesc("e.g. 77-Anki/执业中药师/**")
+  .addText((text) =>
+    text
+      .setValue(config.filePathPattern)
+      .setPlaceholder("path/pattern/**")
+      .onChange((value) => {
+        plugin.settings.templateConfigs[index].filePathPattern = value;
+        plugin.saveData(plugin.settings);
+      })
+  );
+  }
+  }

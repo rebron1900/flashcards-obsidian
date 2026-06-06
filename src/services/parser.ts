@@ -8,6 +8,7 @@ import { Clozecard } from "src/entities/clozecard";
 import { escapeMarkdown } from "src/utils";
 import { Card } from "src/entities/card";
 import { htmlToMarkdown } from 'obsidian';
+import { ITemplateConfig } from "src/conf/settings";
 
 export class Parser {
   private regex: Regex;
@@ -432,6 +433,95 @@ export class Parser {
         inserted,
         medias,
         containsCode
+      );
+      cards.push(card);
+    }
+
+    return cards;
+  }
+
+  /**
+   * 解析 list-field 格式卡片
+   * ### 标题
+   * - **FieldName**：Value
+   * - **FieldName**：Value
+   * 字段名直接对应 Anki 模型字段名
+   */
+  public generateListFieldCards(
+    file: string,
+    deck: string,
+    vault: string,
+    note: string,
+    globalTags: string[] = [],
+    templateConfig: ITemplateConfig
+  ): Flashcard[] {
+    const cards: Flashcard[] = [];
+    // Regex for list-field card: heading followed by - **Field**：Value items
+    // Card boundary: next heading or blank line (or EOF)
+    const headingRegex = /^ {0,3}(#{1,6}) +(.+)$/gm;
+    const fieldItemRegex = /^ {0,3}[-*] {0,3}\*\*(.+?)\*\*\s*[：:]\s*(.*)$/;
+
+    const lines = file.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      // Look for a heading
+      const headingMatch = lines[i].match(headingRegex);
+      if (!headingMatch) {
+        i++;
+        continue;
+      }
+      
+      const cardStartLine = i;
+      i++; // move past heading
+
+      // Collect field lines (must be - **Field**：Value)
+      const fieldLines: string[] = [];
+      while (i < lines.length) {
+        const trimmed = lines[i].trim();
+        // Blank line or next heading → end of card
+        if (trimmed === '' || /^#{1,6}\s/.test(trimmed)) {
+          break;
+        }
+        // Check for field item
+        if (fieldItemRegex.test(trimmed)) {
+          fieldLines.push(trimmed);
+        }
+        i++;
+      }
+
+      if (fieldLines.length === 0) continue;
+
+      // Parse fields
+      const fields: Record<string, string> = {};
+      for (const line of fieldLines) {
+        const m = line.match(fieldItemRegex);
+        if (m) {
+          const fieldName = m[1].trim();
+          const fieldValue = m[2].trim();
+          fields[fieldName] = this.parseLine(fieldValue, vault);
+        }
+      }
+
+      // Build card offsets
+      const cardText = lines.slice(cardStartLine, i).join('\n');
+      const initialOffset = file.indexOf(cardText);
+      const endOffset = initialOffset + cardText.length;
+
+      const tags: string[] = [...globalTags];
+
+      const card = new Flashcard(
+        -1,
+        deck,
+        headingMatch[2].trim(),
+        fields,
+        false,
+        initialOffset,
+        endOffset,
+        tags,
+        false,
+        [],
+        false,
+        templateConfig.modelName
       );
       cards.push(card);
     }
