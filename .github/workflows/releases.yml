@@ -9,7 +9,7 @@ on:
       version:
         description: "版本号（例如 v1.2.3）"
         required: true
-        default: "v1.7.0"
+        default: "1.7.1"
 
 env:
   PLUGIN_NAME: flashcards
@@ -31,19 +31,21 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            RAW_TAG="${{ github.event.inputs.version }}"
           else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
           fi
+          # Strip leading v for clean semver (tag v1.7.1 → version 1.7.1)
+          CLEAN_TAG="${RAW_TAG#v}"
+          echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
 
       - name: Update manifest.json version
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          VER="${TAG#v}"
-          echo "Setting version to $VER"
+          echo "Setting version to $TAG"
           node -e "
             const m = require('./manifest.json');
-            m.version = '$VER';
+            m.version = '$TAG';
             require('fs').writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
           "
           echo "Updated manifest.json:"
