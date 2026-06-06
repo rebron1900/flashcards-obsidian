@@ -77,6 +77,6 @@ export class Flashcard extends Card {
   };
 
   public getIdFormat(): string {
-    return "^" + this.id.toString() + "\n";
+    return "\n^" + this.id.toString();
   }
 }
