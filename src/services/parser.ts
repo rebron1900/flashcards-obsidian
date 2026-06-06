@@ -502,6 +502,12 @@ export class Parser {
         }
       }
 
+      // Make Breadcrumb unique by appending heading (Anki dedup uses 1st field)
+      if (fields['Breadcrumb']) {
+        const cardTitle = headingMatch[2].trim().replace(/\s*#card\s*$/, '').trim();
+        fields['Breadcrumb'] = fields['Breadcrumb'] + ' > ' + cardTitle;
+      }
+
       // Build card offsets
       const cardText = lines.slice(cardStartLine, i).join('\n');
       const initialOffset = file.indexOf(cardText);
