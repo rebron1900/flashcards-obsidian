@@ -55,14 +55,16 @@ export default class ObsidianFlashcard extends Plugin {
 	}
 
 	private getDefaultSettings(): ISettings {
-		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, inlineID: false, contextSeparator: " > ", deck: "Default", folderBasedDeck: true, flashcardsTag: "card", inlineSeparator: "::", inlineSeparatorReverse: ":::", defaultAnkiTag: "obsidian", ankiConnectPermission: false, templateConfigs: [
-      {
-        modelName: "执业中药师-详情卡",
-        filePathPattern: "77-Anki/执业中药师/**",
-        parseMode: "list-field",
-        enabled: true,
-      }
-    ] }
+	  return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, inlineID: false, contextSeparator: " > ", deck: "Default", folderBasedDeck: true, flashcardsTag: "card", inlineSeparator: "::", inlineSeparatorReverse: ":::", defaultAnkiTag: "obsidian", ankiConnectPermission: false,
+	  templateConfigs: [
+	    {
+	      modelName: "执业中药师-详情卡",
+	      fields: ["Breadcrumb", "Question", "Answer", "CoreEfficacy", "MemoryAid", "ExamHistory"],
+	      filePathPattern: "77-Anki/执业中药师/**",
+	      parseMode: "list-field",
+	      enabled: true,
+	    }
+	  ] }
 	}
 
 	private generateCards(activeFile: TFile) {

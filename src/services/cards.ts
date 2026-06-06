@@ -67,8 +67,8 @@ export class CardsService {
     }
 
     try {
-      // Find matching template config
-      const templateConfig = this.matchTemplateConfig(sourcePath);
+      // Find matching template config (frontmatter template field > path pattern)
+      const templateConfig = this.matchTemplateConfig(sourcePath, frontmatter);
       const useListFieldParser = templateConfig && templateConfig.parseMode === 'list-field' && templateConfig.enabled;
 
       // For custom models, skip createModels (model must already exist in Anki)
@@ -413,10 +413,22 @@ export class CardsService {
   }
 
   /**
-   * Match file path against template config patterns.
-   * Pattern supports basic glob: ** for wildcard
+   * Match template config:
+   * 1. frontmatter.template → match by modelName (highest priority)
+   * 2. file path pattern (fallback)
    */
-  public matchTemplateConfig(filePath: string): ITemplateConfig | null {
+  public matchTemplateConfig(filePath: string, frontmatter?: any): ITemplateConfig | null {
+    // Priority 1: frontmatter template field
+    if (frontmatter && frontmatter["template"]) {
+      const templateName = frontmatter["template"];
+      for (const tc of this.settings.templateConfigs) {
+        if (!tc.enabled) continue;
+        if (tc.modelName === templateName) {
+          return tc;
+        }
+      }
+    }
+    // Priority 2: fallback to path pattern matching
     for (const tc of this.settings.templateConfigs) {
       if (!tc.enabled) continue;
       const pattern = tc.filePathPattern;

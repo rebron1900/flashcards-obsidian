@@ -1,0 +1,10 @@
+{
+  "id": "flashcards-obsidian",
+  "name": "Flashcards (Custom Template)",
+  "version": "1.7.0",
+  "minAppVersion": "0.9.17",
+  "description": "Anki integration with custom template support - supports list-field markdown and multi-field Anki models",
+  "author": "rebron1900 + Alex Colucci",
+  "authorUrl": "https://github.com/rebron1900/flashcards-obsidian",
+  "isDesktopOnly": true
+}

@@ -13,7 +13,7 @@ export class SettingsTab extends PluginSettingTab {
     // ── Template Config Section ──
     containerEl.createEl("h2", { text: "Custom Templates" });
     containerEl.createEl("p", {
-      text: "Configure custom Anki note models. Cards in matching paths use the specified model.",
+      text: "Configure custom Anki note models. Set `template:` in your .md frontmatter to match a model name. Cards in matching paths use the specified model as fallback.",
       cls: "setting-item-description"
     });
 
@@ -27,8 +27,9 @@ export class SettingsTab extends PluginSettingTab {
     new Setting(containerEl).addButton((btn) => {
       btn.setButtonText("+ Add Template").onClick(() => {
         const newConfig: ITemplateConfig = {
-          modelName: "执业中药师-详情卡",
-          filePathPattern: "77-Anki/执业中药师/**",
+          modelName: "new-template",
+          fields: ["Question", "Answer"],
+          filePathPattern: "**",
           parseMode: "list-field",
           enabled: true,
         };
@@ -262,7 +263,7 @@ export class SettingsTab extends PluginSettingTab {
   ) {
   const setting = new Setting(containerEl);
   setting.setName(`Template #${index + 1}: ${config.modelName}`);
-  setting.setDesc(`Path: ${config.filePathPattern} | Mode: ${config.parseMode}`);
+  setting.setDesc(`Mode: ${config.parseMode}`);
 
   // Model name
   setting.addText((text) =>
@@ -309,10 +310,38 @@ export class SettingsTab extends PluginSettingTab {
     });
   });
 
-  // File path pattern (separate setting line for clarity)
+  // Fields (one per line) — replaces file path pattern
   new Setting(containerEl)
-  .setName("  File path pattern")
-  .setDesc("e.g. 77-Anki/执业中药师/**")
+  .setName("  Fields")
+  .setDesc("One field name per line. In .md use: - **FieldName**：value")
+  .addTextArea((text) =>
+    text
+      .setValue((config.fields || []).join("\n"))
+      .setPlaceholder("Question\nAnswer\nNote")
+      .onChange((value) => {
+        plugin.settings.templateConfigs[index].fields = value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+        plugin.saveData(plugin.settings);
+      })
+  );
+
+  // Template format preview
+  const previewContainer = containerEl.createDiv({ cls: "setting-item" });
+  const previewDesc = previewContainer.createDiv({ cls: "setting-item-description" });
+  const fields = config.fields || [];
+  if (fields.length > 0) {
+    previewDesc.createEl("strong", { text: "Template format:" });
+    previewDesc.createEl("br");
+    previewDesc.createEl("code", { text: "# Card Title #card" });
+    for (const f of fields) {
+      previewDesc.createEl("br");
+      previewDesc.createEl("code", { text: `- **${f}**：{{value}}` });
+    }
+  }
+
+  // File path pattern (fallback, secondary)
+  new Setting(containerEl)
+  .setName("  File path (fallback)")
+  .setDesc("Optional: match by path if no frontmatter template field")
   .addText((text) =>
     text
       .setValue(config.filePathPattern)

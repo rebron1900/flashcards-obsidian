@@ -1,7 +1,9 @@
 export interface ITemplateConfig {
   /** Anki 模型名，如 "执业中药师-详情卡" */
   modelName: string;
-  /** 匹配路径，如 "77-Anki/执业中药师/**" */
+  /** 字段列表，如 ["Question","Answer","Note","DrugName"] */
+  fields: string[];
+  /** 匹配路径（fallback），如 "77-Anki/执业中药师/**" */
   filePathPattern: string;
   /** Markdown 解析模式 */
   parseMode: 'card-tag' | 'list-field' | 'inline' | 'cloze';
