@@ -458,7 +458,7 @@ export class Parser {
     const cards: Flashcard[] = [];
     // Regex for list-field card: heading followed by - **Field**：Value items
     // Card boundary: next heading or blank line (or EOF)
-    const headingRegex = /^ {0,3}(#{1,6}) +(.+)$/gm;
+    const headingRegex = /^ {0,3}(#{1,6}) +(.+)$/m;
     const fieldItemRegex = /^ {0,3}[-*] {0,3}\*\*(.+?)\*\*\s*[：:]\s*(.*)$/;
 
     const lines = file.split('\n');
