@@ -60,7 +60,15 @@ export abstract class Card {
     const fields: any = Object.entries(card.fields);
     // This is the case of a switch from a model to another one. It cannot be handeled
     if (fields.length !== Object.entries(this.fields).length) {
-      return true;
+      console.warn("Flashcards: Card field count mismatch", {
+        ankiCount: fields.length,
+        localCount: Object.entries(this.fields).length,
+        cardId: this.id,
+        initialContent: this.initialContent,
+        ankiFields: Object.keys(card.fields),
+        localFields: Object.keys(this.fields),
+      });
+      return false;
     }
 
     for (const field of fields) {
