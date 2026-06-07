@@ -97,7 +97,10 @@ export abstract class Card {
         }
         continue;
       }
-      if (field[1].value !== this.fields[fieldName]) {
+      // Compare text content (strip HTML tags) to avoid showdown rendering differences
+      const ankiText = field[1].value.replace(/<[^>]*>/g, '').trim();
+      const localText = (this.fields[fieldName] || '').replace(/<[^>]*>/g, '').trim();
+      if (ankiText !== localText) {
         return false;
       }
     }
