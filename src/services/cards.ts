@@ -220,6 +220,24 @@ export class CardsService {
           cardsToCreate[index].id = id;
         });
 
+        // For list-field cards: addNotes returns null for existing cards (no block ref yet).
+        // Find their real Anki note IDs via content search so block refs can be written.
+        for (let i = 0; i < ids.length; i++) {
+          if (ids[i] === null && cardsToCreate[i]) {
+            const card = cardsToCreate[i];
+            const fieldValues = Object.values(card.fields);
+            if (fieldValues.length > 0) {
+              const cleanText = String(fieldValues[0]).replace(/<[^>]*>/g, '').trim();
+              const existingIds = await this.anki.findNotes(
+                `deck:"${card.deckName}" "${cleanText}"`
+              );
+              if (existingIds && existingIds.length > 0) {
+                cardsToCreate[i].id = existingIds[0];
+              }
+            }
+          }
+        }
+
         let total = 0;
         cardsToCreate.forEach((card) => {
           if (card.id === null) {

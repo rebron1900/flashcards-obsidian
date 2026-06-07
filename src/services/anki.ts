@@ -147,6 +147,10 @@ export class Anki {
     return this.invoke("deleteNotes", 6, { notes: ids });
   }
 
+  public async findNotes(query: string): Promise<number[]> {
+    return this.invoke("findNotes", 6, { query });
+  }
+
   public async ping(): Promise<boolean> {
     return (await this.invoke("version", 6)) === 6;
   }
