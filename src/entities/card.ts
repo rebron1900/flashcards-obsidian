@@ -98,9 +98,25 @@ export abstract class Card {
         continue;
       }
       // Compare text content (strip HTML tags) to avoid showdown rendering differences
-      const ankiText = field[1].value.replace(/<[^>]*>/g, '').trim();
-      const localText = (this.fields[fieldName] || '').replace(/<[^>]*>/g, '').trim();
+      const ankiValue = field[1].value;
+      const localValue = this.fields[fieldName];
+      if (typeof ankiValue !== 'string' || typeof localValue !== 'string') {
+        console.warn("Flashcards: match() non-string field", {
+          cardId: this.id, fieldName,
+          ankiType: typeof ankiValue, localType: typeof localValue,
+          deckName: this.deckName,
+        });
+        return false;
+      }
+      const ankiText = ankiValue.replace(/<[^>]*>/g, '').trim();
+      const localText = localValue.replace(/<[^>]*>/g, '').trim();
       if (ankiText !== localText) {
+        console.warn("Flashcards: match() text differs", {
+          cardId: this.id, fieldName,
+          initialContent: this.initialContent,
+          ankiText: ankiText.substring(0, 80),
+          localText: localText.substring(0, 80),
+        });
         return false;
       }
     }
