@@ -491,6 +491,18 @@ export class Parser {
 
       if (fieldLines.length === 0) continue;
 
+      // Check for existing block ID (^xxxxxxxxxxxxx) after card content
+      let existingBlockId = -1;
+      let hasBlockId = false;
+      if (i > 0 && i <= lines.length) {
+        const possibleBlockLine = lines[i - 1].trim();
+        const blockMatch = possibleBlockLine.match(/^\^(\d{13})$/);
+        if (blockMatch) {
+          existingBlockId = Number(blockMatch[1]);
+          hasBlockId = true;
+        }
+      }
+
       // Parse fields
       const fields: Record<string, string> = {};
       for (const line of fieldLines) {
@@ -516,7 +528,7 @@ export class Parser {
       const tags: string[] = [...globalTags];
 
       const card = new Flashcard(
-        -1,
+        hasBlockId ? existingBlockId : -1,
         deck,
         headingMatch[2].trim(),
         fields,
@@ -524,7 +536,7 @@ export class Parser {
         initialOffset,
         endOffset,
         tags,
-        false,
+        hasBlockId,
         [],
         false,
         templateConfig.modelName
