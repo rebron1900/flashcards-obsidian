@@ -520,6 +520,15 @@ export class Parser {
         fields['Breadcrumb'] = fields['Breadcrumb'] + ' > ' + cardTitle;
       }
 
+      // Fill in missing fields from template config (horizontal comparison cards may have fewer fields)
+      if (templateConfig && templateConfig.fields) {
+        for (const modelField of templateConfig.fields) {
+          if (!(modelField in fields)) {
+            fields[modelField] = '';
+          }
+        }
+      }
+
       // Build card offsets
       const cardText = lines.slice(cardStartLine, i).join('\n');
       const initialOffset = file.indexOf(cardText);
