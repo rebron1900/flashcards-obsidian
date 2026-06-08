@@ -514,11 +514,8 @@ export class Parser {
         }
       }
 
-      // Make Breadcrumb unique by appending heading (Anki dedup uses 1st field)
-      if (fields['Breadcrumb']) {
-        const cardTitle = headingMatch[2].trim().replace(/\s*#card\s*$/, '').trim();
-        fields['Breadcrumb'] = fields['Breadcrumb'] + ' > ' + cardTitle;
-      }
+      // list-field mode: don't modify any user-declared fields.
+      // Missing fields will be filled by template config below.
 
       // Fill in missing fields from template config (horizontal comparison cards may have fewer fields)
       if (templateConfig && templateConfig.fields) {
