@@ -2,6 +2,8 @@ name: Build & Release Obsidian Plugin
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "*"
   workflow_dispatch:
@@ -24,7 +26,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "20"
           cache: "npm"
 
       - name: Decide version
@@ -32,10 +34,20 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             RAW_TAG="${{ github.event.inputs.version }}"
-          else
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             RAW_TAG="${GITHUB_REF#refs/tags/}"
+          else
+            # Push to main: auto-bump patch from manifest
+            CURRENT=$(node -p "require('./manifest.json').version")
+            MAJOR="${CURRENT%%.*}"
+            MINOR_PATCH="${CURRENT#*.}"
+            MINOR="${MINOR_PATCH%.*}"
+            PATCH="${MINOR_PATCH##*.}"
+            CLEAN_TAG="${MAJOR}.${MINOR}.$(( PATCH + 1 ))"
+            echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
+            exit 0
           fi
-          # Strip leading v for clean semver (tag v1.7.1 → version 1.7.1)
+          # Strip leading v for clean semver
           CLEAN_TAG="${RAW_TAG#v}"
           echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
 
@@ -52,7 +64,7 @@ jobs:
           head -5 manifest.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build with esbuild
         run: |
