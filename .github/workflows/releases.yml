@@ -15,6 +15,7 @@ on:
 
 env:
   PLUGIN_NAME: flashcards
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -27,7 +28,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Decide version
         id: version
