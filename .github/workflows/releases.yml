@@ -47,35 +47,20 @@ jobs:
             echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
             exit 0
           fi
-          # Strip leading v for clean semver
           CLEAN_TAG="${RAW_TAG#v}"
           echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
 
       - name: Update manifest.json version
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          echo "Setting version to $TAG"
           node -e "
             const m = require('./manifest.json');
             m.version = '$TAG';
             require('fs').writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
           "
-          echo "Updated manifest.json:"
-          head -5 manifest.json
 
       - name: Install dependencies
-        run: |
-          set -o pipefail
-          npm install 2>&1 | tee /tmp/npm-output.txt
-
-      - name: Upload npm debug log on failure
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: npm-debug
-          path: |
-            /tmp/npm-output.txt
-            /home/runner/.npm/_logs/*.log
+        run: npm install
 
       - name: Build with esbuild
         run: npx esbuild main.ts --bundle --external:obsidian --format=cjs --outfile=main.js --target=es2016 --minify
