@@ -64,16 +64,7 @@ jobs:
           head -5 manifest.json
 
       - name: Install dependencies
-        run: |
-          node --version
-          npm --version
-          npm config get registry
-          # Attempt install, capture full output
-          npm install 2>&1 | tee /tmp/npm-output.txt
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "::error::$(head -20 /tmp/npm-output.txt | tr '\n' ' ')"
-            exit 1
-          fi
+        run: npm install --prefer-offline --no-audit --no-fund
 
       - name: Build with esbuild
         run: npx esbuild main.ts --bundle --external:obsidian --format=cjs --outfile=main.js --target=es2016 --minify
