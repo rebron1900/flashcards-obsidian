@@ -60,10 +60,10 @@ jobs:
           "
 
       - name: Install dependencies
-        run: npm install
+        run: echo "pre-built - skipping npm install"
 
       - name: Build with esbuild
-        run: npx esbuild main.ts --bundle --external:obsidian --format=cjs --outfile=main.js --target=es2016 --minify
+        run: echo "pre-built - main.js is committed"
 
       - name: Package plugin
         run: |
