@@ -64,11 +64,13 @@ jobs:
           head -5 manifest.json
 
       - name: Install dependencies
-        run: npm install 2>&1 | tee /tmp/npm-output.txt
+        run: |
+          set -o pipefail
+          npm install 2>&1 | tee /tmp/npm-output.txt
 
       - name: Upload npm debug log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: npm-debug
           path: |
