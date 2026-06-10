@@ -64,9 +64,16 @@ jobs:
           head -5 manifest.json
 
       - name: Install dependencies
-        run: |
-          npm cache clean --force
-          npm install
+        run: npm install 2>&1 | tee /tmp/npm-output.txt
+
+      - name: Upload npm debug log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug
+          path: |
+            /tmp/npm-output.txt
+            /home/runner/.npm/_logs/*.log
 
       - name: Build with esbuild
         run: npx esbuild main.ts --bundle --external:obsidian --format=cjs --outfile=main.js --target=es2016 --minify
