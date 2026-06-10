@@ -514,8 +514,14 @@ export class Parser {
         }
       }
 
-      // list-field mode: don't modify any user-declared fields.
-      // Missing fields will be filled by template config below.
+      // Append card TYPE to Breadcrumb for uniqueness (Anki dedup uses 1st field).
+      // Only the type part after "·" is appended (e.g. "黄芩·功效" → "功效"),
+      // so the drug name never appears on the card front.
+      if (fields['Breadcrumb']) {
+        const cardTitle = headingMatch[2].trim().replace(/\s*#card\s*$/, '').trim();
+        const typeOnly = cardTitle.includes('·') ? cardTitle.split('·').pop() : cardTitle;
+        fields['Breadcrumb'] = fields['Breadcrumb'] + ' > ' + typeOnly;
+      }
 
       // Fill in missing fields from template config (horizontal comparison cards may have fewer fields)
       if (templateConfig && templateConfig.fields) {
