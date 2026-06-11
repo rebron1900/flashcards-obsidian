@@ -1,7 +1,7 @@
 export interface ITemplateConfig {
   /** Anki 模型名，如 "执业中药师-详情卡" */
   modelName: string;
-  /** 字段列表，如 ["Question","Answer","Note","DrugName"] */
+  /** 字段列表。用 :key 后缀标记唯一键字段，如 "Question:key" */
   fields: string[];
   /** 匹配路径（fallback），如 "77-Anki/执业中药师/**" */
   filePathPattern: string;

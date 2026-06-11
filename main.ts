@@ -59,7 +59,7 @@ export default class ObsidianFlashcard extends Plugin {
 	  templateConfigs: [
 	    {
 	      modelName: "执业中药师-详情卡",
-	      fields: ["Breadcrumb", "Question", "Answer", "CoreEfficacy", "MemoryAid", "ExamHistory"],
+	      fields: ["Breadcrumb", "Question:key", "Answer", "CoreEfficacy", "MemoryAid", "ExamHistory"],
 	      filePathPattern: "77-Anki/执业中药师/**",
 	      parseMode: "list-field",
 	      enabled: true,
