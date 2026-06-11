@@ -375,4 +375,140 @@ export class Anki {
   public async requestPermission() {
     return this.invoke("requestPermission", 6);
   }
+
+  // ── Custom Model Management ──
+
+  /** List all model names with IDs */
+  public async modelNamesAndIds(): Promise<Record<string, number>> {
+    return this.invoke("modelNamesAndIds", 6);
+  }
+
+  /** Get field names for a model in Anki's order */
+  public async modelFieldNames(modelName: string): Promise<string[]> {
+    return this.invoke("modelFieldNames", 6, { modelName });
+  }
+
+  /**
+   * Create a custom note model with key field first.
+   * Fields are ordered: keyField first, then the rest in config order.
+   * Card front shows the key field; back renders all fields.
+   */
+  public async createCustomModel(
+    modelName: string,
+    fields: string[],
+    keyField: string | null
+  ): Promise<number> {
+    // Move key field to first position
+    const others = keyField
+      ? fields.filter(f => f !== keyField)
+      : fields;
+    const orderedFields = keyField
+      ? [keyField, ...others]
+      : fields;
+
+    // Build card templates:
+    // Front shows the key field; Back shows a styled table of all fields
+    const frontHtml = orderedFields.length > 0
+      ? `{{${orderedFields[0]}}}`
+      : '';
+
+    let backHtml = `{{FrontSide}}\n\n<hr id=answer>\n\n`;
+    for (const f of orderedFields) {
+      backHtml += `<div style="margin:0.5em 0"><strong>${f}:</strong><br>{{${f}}}</div>\n`;
+    }
+
+    const css = `.card { font-family: arial; font-size: 18px; text-align: left; color: black; background-color: white; padding: 1em; }`;
+
+    return this.invoke("createModel", 6, {
+      modelName,
+      inOrderFields: orderedFields,
+      css,
+      cardTemplates: [
+        {
+          Name: "Card 1",
+          Front: frontHtml,
+          Back: backHtml,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Add cards individually.
+   * When a keyField is provided and the model's field 1 is NOT the key field,
+   * prefix the key value to the first field for dedup safety.
+   */
+  public async addCardsWithKey(
+    cards: Card[],
+    keyField: string | null
+  ): Promise<number[]> {
+    const ids: number[] = [];
+    const modelName = cards.length > 0 ? cards[0].modelName : '';
+
+    // Optionally check model field order if keyField is set
+    let modelField0 = '';
+    if (keyField && modelName) {
+      try {
+        const fieldNames = await this.modelFieldNames(modelName);
+        modelField0 = fieldNames[0] || '';
+      } catch {
+        // Model may not exist yet — that's handled by cards.ts
+      }
+    }
+
+    for (const card of cards) {
+      const note = card.getCard(false);
+      const fieldNames = Object.keys(note.fields);
+      const firstFieldValue = String(Object.values(note.fields)[0] || '')
+        .replace(/<[^>]*>/g, '').trim().substring(0, 100);
+
+      console.debug(
+        `Flashcards: addNote [${note.modelName}] fields=${fieldNames.join(',')} first="${firstFieldValue}"`,
+        note.fields
+      );
+
+      // Safety: if model's field 1 != key field, prefix key value to first field
+      // This only affects the addNote payload, not the Obsidian file
+      if (keyField && modelField0 && modelField0 !== keyField) {
+        const keyVal = note.fields[keyField];
+        if (keyVal) {
+          const cleanKey = keyVal.replace(/<[^>]*>/g, '').trim().substring(0, 60);
+          const firstField = fieldNames[0];
+          if (firstField) {
+            note.fields[firstField] = note.fields[firstField] + ' | ' + cleanKey;
+            console.debug(`Flashcards: prepended key to field 1 for dedup: "${cleanKey}"`);
+          }
+        }
+      }
+
+      try {
+        const result = await this.invoke("addNote", 6, { note });
+        ids.push(result);
+      } catch (err) {
+        console.warn(`Flashcards: addNote failed for "${card.initialContent}":`, err);
+        if (typeof err === 'string' && err.includes('duplicate')) {
+          // Fallback: find existing note and return its ID
+          try {
+            const searchVal = keyField && note.fields[keyField]
+              ? note.fields[keyField].replace(/<[^>]*>/g, '').trim().substring(0, 100)
+              : firstFieldValue;
+            const existingIds = await this.invoke("findNotes", 6, {
+              query: `deck:"${card.deckName}" "${searchVal}"`,
+            });
+            if (existingIds && existingIds.length > 0) {
+              ids.push(existingIds[0]);
+            } else {
+              ids.push(null);
+            }
+          } catch {
+            ids.push(null);
+          }
+        } else {
+          ids.push(null);
+        }
+      }
+    }
+
+    return ids;
+  }
 }

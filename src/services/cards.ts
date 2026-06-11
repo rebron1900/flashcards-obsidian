@@ -71,7 +71,7 @@ export class CardsService {
       const templateConfig = this.matchTemplateConfig(sourcePath, frontmatter);
       const useListFieldParser = templateConfig && templateConfig.parseMode === 'list-field' && templateConfig.enabled;
 
-      // For custom models, skip createModels (model must already exist in Anki)
+      // For custom models, verify or create the model with correct field order
       if (!templateConfig) {
         this.anki.storeCodeHighlightMedias();
         await this.anki.createModels(
@@ -79,8 +79,37 @@ export class CardsService {
           this.settings.codeHighlightSupport
         );
       } else {
-        // Still store highlight medias if needed, but skip model creation
         this.anki.storeCodeHighlightMedias();
+        // Verify/create custom model so key field is first for dedup
+        const keyField = extractKeyField(templateConfig.fields);
+        if (useListFieldParser) {
+          const rawFields = templateConfig.fields.map(f => f.replace(/:key$/, ''));
+          try {
+            const ankiFields = await this.anki.modelFieldNames(templateConfig.modelName);
+            // Model exists — check field order
+            if (keyField && ankiFields[0] !== keyField) {
+              this.notifications.push(
+                `Warning: Anki model "${templateConfig.modelName}" has "${ankiFields[0]}" as field 1, ` +
+                `but "${keyField}" is the key. Reorder fields in Anki Desktop (${keyField} first) ` +
+                `to avoid duplicate errors. The plugin will auto-prefix key values as fallback.`
+              );
+            }
+          } catch {
+            // Model doesn't exist — create it with correct field order
+            try {
+              const modelId = await this.anki.createCustomModel(
+                templateConfig.modelName,
+                rawFields,
+                keyField
+              );
+              console.debug(`Flashcards: created model "${templateConfig.modelName}" (id=${modelId}) with key="${keyField}"`);
+              this.notifications.push(`Created Anki model "${templateConfig.modelName}" with ${keyField} as field 1.`);
+            } catch (createErr) {
+              console.error('Flashcards: failed to create model:', createErr);
+              this.notifications.push(`Error: Could not create Anki model "${templateConfig.modelName}". Anki must be running.`);
+            }
+          }
+        }
       }
       await this.anki.createDeck(deckName);
       this.file = await this.app.vault.read(activeFile);
@@ -139,7 +168,7 @@ export class CardsService {
       this.insertMedias(cards, sourcePath);
       await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks);
       await this.updateCardsOnAnki(cardsToUpdate);
-      await this.insertCardsOnAnki(cardsToCreate);
+      await this.insertCardsOnAnki(cardsToCreate, useListFieldParser ? extractKeyField(templateConfig?.fields || []) : null);
 
       // Update decks if needed
       const deckNeedToBeChanged = await this.deckNeedToBeChanged(
@@ -210,11 +239,11 @@ export class CardsService {
     }
   }
 
-  private async insertCardsOnAnki(cardsToCreate: Card[]): Promise<number> {
+  private async insertCardsOnAnki(cardsToCreate: Card[], keyField: string | null = null): Promise<number> {
     if (cardsToCreate.length) {
       let insertedCards = 0;
       try {
-        const ids = await this.anki.addCards(cardsToCreate);
+        const ids = await this.anki.addCardsWithKey(cardsToCreate, keyField);
         // Add IDs from response to Flashcard[]
         ids.map((id: number, index: number) => {
           cardsToCreate[index].id = id;
@@ -483,4 +512,16 @@ export class CardsService {
 
     return [];
   }
+}
+
+/** Extract the key field name from a template config's fields array.
+ *  The field marked with ":key" suffix (e.g. "Question:key") is the key field.
+ *  Returns null if no field is marked. */
+function extractKeyField(fields: string[]): string | null {
+  for (const f of fields) {
+    if (f.endsWith(':key')) {
+      return f.replace(/:key$/, '');
+    }
+  }
+  return null;
 }
