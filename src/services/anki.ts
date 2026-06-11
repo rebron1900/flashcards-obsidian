@@ -79,13 +79,55 @@ export class Anki {
   }
 
   public async addCards(cards: Card[]): Promise<number[]> {
-    const notes: any = [];
+    const ids: number[] = [];
 
-    cards.forEach((card) => notes.push(card.getCard(false)));
+    for (const card of cards) {
+      const note = card.getCard(false);
+      // Debug: log the fields being sent, highlighting the key field
+      const fieldNames = Object.keys(note.fields);
+      const firstFieldValue = String(Object.values(note.fields)[0] || '').replace(/<[^>]*>/g, '').trim().substring(0, 100);
+      console.debug(`Flashcards: addNote [${note.modelName}] fields=${fieldNames.join(',')} first="${firstFieldValue}"`, note.fields);
 
-    return this.invoke("addNotes", 6, {
-      notes: notes,
-    });
+      try {
+        const result = await this.invoke("addNote", 6, {
+          note: note,
+        });
+        ids.push(result);
+      } catch (err) {
+        // Duplicate: find existing note ID so we can write block refs
+        console.warn(`Flashcards: addNote failed for "${card.initialContent}":`, err);
+        if (typeof err === 'string' && err.includes('duplicate')) {
+          try {
+            const cleanText = firstFieldValue;
+            const existingIds = await this.invoke("findNotes", 6, {
+              query: `deck:"${card.deckName}" "${cleanText}"`,
+            });
+            if (existingIds && existingIds.length > 0) {
+              ids.push(existingIds[0]);
+              console.debug(`Flashcards: found existing note ${existingIds[0]} for "${cleanText}"`);
+            } else {
+              // Try broader search without deck scope
+              const anyIds = await this.invoke("findNotes", 6, {
+                query: `"${cleanText}"`,
+              });
+              if (anyIds && anyIds.length > 0) {
+                ids.push(anyIds[0]);
+                console.debug(`Flashcards: found existing note ${anyIds[0]} (diff deck) for "${cleanText}"`);
+              } else {
+                ids.push(null);
+              }
+            }
+          } catch (searchErr) {
+            console.error('Flashcards: findNotes failed:', searchErr);
+            ids.push(null);
+          }
+        } else {
+          ids.push(null);
+        }
+      }
+    }
+
+    return ids;
   }
 
   /**
